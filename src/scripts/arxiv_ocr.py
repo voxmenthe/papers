@@ -23,6 +23,10 @@ import markdown
 from bs4 import BeautifulSoup
 from mistralai import Mistral
 from mistralai import DocumentURLChunk, ImageURLChunk, TextChunk
+from creds import all_creds
+
+MISTRAL_API_KEY = all_creds['MISTRAL_API_KEY']
+os.environ['MISTRAL_API_KEY'] = MISTRAL_API_KEY
 
 def get_arxiv_pdf(arxiv_id):
     """
@@ -254,7 +258,19 @@ def sanitize_filename(title):
 
 
 @click.command()
-@click.argument("arxiv_url")
+@click.argument("arxiv_url", required=False)
+@click.option(
+    "--file-path",
+    "-f",
+    help="Path to a local PDF file to process instead of downloading from arXiv.",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--output-file",
+    "-o",
+    help="Output filename. If not provided, defaults to {sanitized_title}.md or {sanitized_title}.html if --html is used.",
+    type=str,
+)
 @click.option(
     "--api-key",
     help="Mistral API key. If not provided, will use MISTRAL_API_KEY environment variable.",
@@ -309,6 +325,8 @@ def sanitize_filename(title):
 )
 def arxiv_to_markdown(
     arxiv_url,
+    file_path,
+    output_file,
     api_key,
     model,
     json_output,
@@ -318,59 +336,78 @@ def arxiv_to_markdown(
     silent,
     pages,
 ):
-    """Process an arXiv paper (given its URL) and convert it to markdown using Mistral OCR.
+    """Process a PDF file and convert it to markdown using Mistral OCR.
     
-    ARXIV_URL is the URL of the arXiv paper (abs, PDF, or HTML format).
-    The script will download the PDF version, process it with OCR, and save the result
-    in the papers/ directory with a sanitized filename based on the paper title.
+    Either ARXIV_URL (URL of the arXiv paper) or --file-path (path to local PDF) must be provided.
+    The script will process the PDF with OCR and save the result in the papers/ directory.
     
     \b
     Examples:
       python arxiv_ocr.py https://arxiv.org/abs/1706.03762 --api-key YOUR_API_KEY
-      python arxiv_ocr.py https://arxiv.org/abs/1706.03762 --pages 5 --html
+      python arxiv_ocr.py --file-path path/to/paper.pdf --pages 5 --html
     """
+    # Validate inputs
+    if not arxiv_url and not file_path:
+        raise click.ClickException("Either ARXIV_URL or --file-path must be provided.")
+    if arxiv_url and file_path:
+        raise click.ClickException("Cannot provide both ARXIV_URL and --file-path.")
+    
     # Validate API key
     if not api_key:
         raise click.ClickException("No API key provided and MISTRAL_API_KEY environment variable not set.")
     
     try:
         # Check if papers directory exists, create if not
-        papers_dir = Path("papers")
+        papers_dir = Path("papers_ocr_results")
         papers_dir.mkdir(exist_ok=True)
         
-        # Extract arXiv ID from URL
-        if not silent:
-            click.echo(f"Extracting arXiv ID from URL: {arxiv_url}", err=True)
-        arxiv_id = extract_arxiv_id(arxiv_url)
-        if not silent:
-            click.echo(f"Found arXiv ID: {arxiv_id}", err=True)
+        # Handle local file or arXiv URL
+        if file_path:
+            # Use the filename (without extension) as the paper title
+            paper_title = file_path.stem
+            submission_date = None
+            arxiv_id = None
+            bibtex_content = None
+            
+            # Read the PDF file
+            if not silent:
+                click.echo(f"Reading local PDF file: {file_path}", err=True)
+            pdf_content = file_path.read_bytes()
+        else:
+            # Extract arXiv ID from URL
+            if not silent:
+                click.echo(f"Extracting arXiv ID from URL: {arxiv_url}", err=True)
+            arxiv_id = extract_arxiv_id(arxiv_url)
+            if not silent:
+                click.echo(f"Found arXiv ID: {arxiv_id}", err=True)
+            
+            # Get paper metadata
+            if not silent:
+                click.echo("Fetching paper metadata...", err=True)
+            paper_title, submission_date = get_paper_metadata(arxiv_id)
+            
+            # Download PDF
+            if not silent:
+                click.echo(f"Downloading PDF from arXiv...", err=True)
+            pdf_content = get_arxiv_pdf(arxiv_id)
+            
+            # Download BibTeX citation
+            if not silent:
+                click.echo(f"Downloading BibTeX citation...", err=True)
+            bibtex_content = get_arxiv_bibtex(arxiv_id)
+            if bibtex_content:
+                if not silent:
+                    click.echo(f"BibTeX citation retrieved successfully", err=True)
+            else:
+                if not silent:
+                    click.echo(f"Could not retrieve BibTeX citation", err=True)
         
-        # Get paper metadata
-        if not silent:
-            click.echo("Fetching paper metadata...", err=True)
-        paper_title, submission_date = get_paper_metadata(arxiv_id)
         sanitized_title = sanitize_filename(paper_title)
         if not silent:
             click.echo(f"Paper title: {paper_title}", err=True)
             if submission_date:
                 click.echo(f"Submission date: {submission_date}", err=True)
             click.echo(f"Sanitized filename: {sanitized_title}", err=True)
-        
-        # Download PDF
-        if not silent:
-            click.echo(f"Downloading PDF from arXiv...", err=True)
-        pdf_content = get_arxiv_pdf(arxiv_id)
-        
-        # Download BibTeX citation
-        if not silent:
-            click.echo(f"Downloading BibTeX citation...", err=True)
-        bibtex_content = get_arxiv_bibtex(arxiv_id)
-        if bibtex_content:
-            if not silent:
-                click.echo(f"BibTeX citation retrieved successfully", err=True)
-        else:
-            if not silent:
-                click.echo(f"Could not retrieve BibTeX citation", err=True)
         
         # Create temp file for PDF
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_pdf:
@@ -379,7 +416,7 @@ def arxiv_to_markdown(
         
         try:
             if not silent:
-                click.echo(f"Downloaded PDF to {temp_pdf_path}", err=True)
+                click.echo(f"Created temporary PDF at {temp_pdf_path}", err=True)
             
             # Process PDF with Mistral OCR
             client = Mistral(api_key=api_key)
@@ -391,7 +428,7 @@ def arxiv_to_markdown(
                     click.echo(f"Uploading file to Mistral...", err=True)
                 uploaded_file = client.files.upload(
                     file={
-                        "file_name": f"{arxiv_id}.pdf",
+                        "file_name": f"{paper_title}.pdf",
                         "content": pdf_content,
                     },
                     purpose="ocr",
@@ -425,12 +462,21 @@ def arxiv_to_markdown(
                 # Define output paths - always create a directory structure
                 output_dir = papers_dir / sanitized_title
                 output_dir.mkdir(exist_ok=True)
-                output_file = output_dir / "README.md"
+                
+                # Determine output filename
+                if output_file:
+                    # If output_file is provided, use it directly
+                    output_filename = output_file
+                else:
+                    # Default to sanitized_title with appropriate extension
+                    output_filename = f"{sanitized_title}.{'html' if html else 'md'}"
+                
+                output_file = output_dir / output_filename
                 bibtex_file = output_dir / f"{sanitized_title}.bib"
                 
-                # For HTML output, use index.html instead of README.md
-                if html:
-                    output_file = output_dir / "index.html"
+                # For HTML output, ensure it has .html extension
+                if html and not output_file.suffix.lower() == '.html':
+                    output_file = output_file.with_suffix('.html')
                 
                 # Save BibTeX citation if available
                 if bibtex_content:
