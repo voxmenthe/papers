@@ -6,3 +6,7 @@ poetry.lock
 **/*.pyc
 __pycache__
 **/__pycache__
+.qodo
+yek
+yek.yaml
+**/.DS_Store
