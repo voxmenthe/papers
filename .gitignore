@@ -10,3 +10,5 @@ __pycache__
 yek
 yek.yaml
 **/.DS_Store
+search*.txt
+iclr*papers.txt

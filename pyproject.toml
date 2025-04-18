@@ -35,6 +35,8 @@ click = "*"
 mistralai = "*"
 markdown = "*"
 requests = "*"
+feedparser = "*"
+openreview-py = "*"
 beautifulsoup4 = "*"
 
 [tool.poetry.group.dev.dependencies]
