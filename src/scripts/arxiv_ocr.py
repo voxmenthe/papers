@@ -1,13 +1,7 @@
-# /// script
-# requires-python = ">=3.12"
-# dependencies = [
-#     "click",
-#     "mistralai",
-#     "markdown",
-#     "requests",
-#     "beautifulsoup4",
-# ]
-# ///
+# arxiv_ocr.py
+# Usage Examples:
+#     python arxiv_ocr.py https://arxiv.org/abs/1706.03762 --api-key YOUR_API_KEY
+#     python arxiv_ocr.py --file-path path/to/paper.pdf --pages 5 --html
 
 import os
 import json
