@@ -1,10 +1,11 @@
 [tool.poetry]
-name = "papers"
+name = "chatpdf"
 version = "0.1.0"
-description = "Managing Arxiv Papers"
+description = "Chat with your PDFs from the command line."
 authors = ["Jeff Coggshall <thenextlocalminima@gmail.com>"]
 readme = "README.md"
 packages = [
+    { include = "chatpdf" },
     { include = "scripts", from = "src" },
     { include = "utils", from = "src" }
 ]
@@ -31,9 +32,16 @@ nltk = "^3.8.1"
 numpy = "^2.1.0"
 pandas = "^2.2.0"
 pypdf = {version = ">=5.4.0,<6.0.0", extras = ["crypto"]}
+pymupdf = "*"
+pdfplumber = "*"
+sentence-transformers = "*"
 scikit-learn = "^1.5.0"
 tensorboard = "^2.19.0"
 standard-imghdr = "^3.13.0"
+prompt-toolkit = "*"
+rich = "*"
+tabulate = "*"
+sqlite-utils = "^3.36"
 
 python-dotenv = "^1.0.0"
 db-dtypes = "1.2.0"
@@ -107,3 +115,7 @@ ignore = [
     "PLR2004", # Magic value used in comparison, ...
     "S311", # Standard pseudo-random generators are not suitable for cryptographic purposes
 ]
+
+
+[tool.poetry.scripts]
+chatpdf = "chatpdf.cli:main"

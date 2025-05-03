@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "sql-cli-playground"
+version = "0.1.0"
+description = "CLI playground for mixing NumPy/Pandas with SQLite"
+authors = ["Jeff Coggshall <alocalminima@gmail.com>"]
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python          = "^3.13"
+numpy           = "^2.2.5"
+pandas          = "^2.2.3"
+prompt_toolkit  = "^3.0"
+rich            = "^13.0"
+pytest          = "^7.0"
+
+
+[tool.poetry.scripts]
+sql = "src.cli:main"

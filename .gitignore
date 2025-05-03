@@ -12,3 +12,15 @@ yek.yaml
 **/.DS_Store
 search*.txt
 iclr*papers.txt
+# .gitignore content
+.memory_db/
+__pycache__/
+*.pyc
+*.npy
+*.db
+*.db-journal
+.venv/
+venv/
+ENV/
+env/
+*.log
