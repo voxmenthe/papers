@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "chatpdf"
+name = "papers"
 version = "0.1.0"
-description = "Chat with your PDFs from the command line."
+description = "Managing Arxiv Papers + ChatPDF"
 authors = ["Jeff Coggshall <thenextlocalminima@gmail.com>"]
 readme = "README.md"
 packages = [
@@ -16,6 +16,7 @@ anthropic = {version = "^0.42.0", extras = ["vertex"]}
 beautifulsoup4 = "*"
 bitsandbytes = "^0.42.0"
 click = "*"
+doctly = "*"
 mistralai = "*"
 markdown = "*"
 requests = "*"
